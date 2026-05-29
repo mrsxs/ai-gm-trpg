@@ -1,0 +1,26 @@
+server:
+  port: 8080
+spring:
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false          # 关闭自动路由，全部显式声明，杜绝内部服务被对外
+      routes:
+        - id: user-service
+          uri: lb://user-service
+          predicates: [ "Path=/api/user/**" ]
+        - id: scenario-service
+          uri: lb://scenario-service
+          predicates: [ "Path=/api/scenario/**" ]
+        - id: game-service
+          uri: lb://game-service
+          predicates: [ "Path=/api/game/**" ]
+      globalcors:                  # 基线 §3.5
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: [ "http://localhost:5173" ]
+            allowedMethods: [ GET, POST, PUT, DELETE, OPTIONS ]
+            allowedHeaders: [ Authorization, Content-Type ]
+            allowCredentials: true
+            maxAge: 3600

@@ -1,0 +1,11 @@
+server:
+  port: 8084
+aigm:
+  llm:
+    # OpenAI 兼容；提供 api-key 即走真实 LLM，缺省则 ai-engine 用确定性 stub 兜底（保证无 key 也可端到端跑通）
+    base-url: ${LLM_BASE_URL:https://api.deepseek.com/v1}
+    model: ${LLM_MODEL:deepseek-chat}
+    api-key: ${LLM_API_KEY:}
+    temperature: 0.8
+    timeout-ms: 60000
+    response-format-json: true

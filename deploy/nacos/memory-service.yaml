@@ -1,0 +1,19 @@
+server:
+  port: 8085
+aigm:
+  embedding:
+    # OpenAI 兼容嵌入；提供 api-key 即走真实 embedding，缺省则用确定性伪向量兜底（保证无 key 也可 RAG 演示）
+    base-url: ${EMBEDDING_BASE_URL:https://open.bigmodel.cn/api/paas/v4}
+    model: ${EMBEDDING_MODEL:embedding-2}
+    api-key: ${EMBEDDING_API_KEY:}
+    dimension: 1024
+  memory:
+    # 远端 PG 未装 pgvector，降级为 real[] + 应用层余弦；装上 pgvector 后置 true
+    pgvector-enabled: false
+    recall-default-top-k: 5
+spring:
+  datasource:
+    url: jdbc:postgresql://123.57.166.60:5432/aigm_memory
+    username: postgres
+    password: "3100880856"
+    driver-class-name: org.postgresql.Driver

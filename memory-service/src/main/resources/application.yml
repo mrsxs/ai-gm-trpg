@@ -1,0 +1,10 @@
+# 端口与 datasource(PG) 由 Nacos memory-service.yaml 下发；此处仅放本服务治理默认值。
+aigm:
+  embedding:
+    base-url: ${EMBEDDING_BASE_URL:}
+    model: ${EMBEDDING_MODEL:text-embedding-3-small}
+    api-key: ${EMBEDDING_API_KEY:}
+    dimension: 1024
+  memory:
+    pgvector-enabled: false
+    recall-default-top-k: 5

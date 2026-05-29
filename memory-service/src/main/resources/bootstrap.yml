@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: memory-service
+  profiles:
+    active: local
+  cloud:
+    nacos:
+      server-addr: 123.57.166.60:8848
+      username: nacos
+      password: "3100880856"
+      discovery:
+        namespace: public
+        group: DEFAULT_GROUP
+      config:
+        namespace: public
+        group: DEFAULT_GROUP
+        file-extension: yaml
+        shared-configs:
+          - data-id: aigm-common.yaml
+            group: DEFAULT_GROUP
+            refresh: true

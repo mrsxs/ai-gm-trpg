@@ -1,0 +1,40 @@
+import request from './request'
+
+// ===== user =====
+export const apiRegister = (data) => request.post('/api/user/auth/register', data)
+export const apiLogin = (data) => request.post('/api/user/auth/login', data)
+export const apiMe = () => request.get('/api/user/me')
+export const apiUpdateMe = (data) => request.put('/api/user/me', data)
+export const apiAdminUsers = (params) => request.get('/api/user/admin/users', { params })
+export const apiUpdateUserStatus = (id, status) => request.put(`/api/user/admin/users/${id}/status`, { status })
+export const apiAssignRoles = (id, roles) => request.put(`/api/user/admin/users/${id}/roles`, { roles })
+export const apiDeleteUser = (id) => request.delete(`/api/user/admin/users/${id}`)
+
+// ===== scenario =====
+export const apiPublished = (params) => request.get('/api/scenario/published', { params })
+export const apiScenarioDetail = (id) => request.get(`/api/scenario/${id}`)
+export const apiMine = (params) => request.get('/api/scenario/mine', { params })
+export const apiCreateScenario = (data) => request.post('/api/scenario', data)
+export const apiUpdateScenario = (id, data) => request.put(`/api/scenario/${id}`, data)
+export const apiPublishScenario = (id, status) => request.put(`/api/scenario/${id}/publish`, { status })
+export const apiDeleteScenario = (id) => request.delete(`/api/scenario/${id}`)
+export const apiNodes = (sid) => request.get(`/api/scenario/${sid}/nodes`)
+export const apiCreateNode = (sid, data) => request.post(`/api/scenario/${sid}/nodes`, data)
+export const apiUpdateNode = (nodeId, data) => request.put(`/api/scenario/nodes/${nodeId}`, data)
+export const apiDeleteNode = (nodeId) => request.delete(`/api/scenario/nodes/${nodeId}`)
+export const apiNpcs = (sid) => request.get(`/api/scenario/${sid}/npcs`)
+export const apiCreateNpc = (sid, data) => request.post(`/api/scenario/${sid}/npcs`, data)
+export const apiUpdateNpc = (npcId, data) => request.put(`/api/scenario/npcs/${npcId}`, data)
+export const apiDeleteNpc = (npcId) => request.delete(`/api/scenario/npcs/${npcId}`)
+export const apiTransitions = (sid) => request.get(`/api/scenario/${sid}/transitions`)
+export const apiCreateTransition = (data) => request.post('/api/scenario/transitions', data)
+export const apiUpdateTransition = (id, data) => request.put(`/api/scenario/transitions/${id}`, data)
+export const apiDeleteTransition = (id) => request.delete(`/api/scenario/transitions/${id}`)
+
+// ===== game =====
+export const apiStartSession = (scenarioId) => request.post('/api/game/sessions', { scenarioId })
+export const apiSubmitTurn = (id, playerInput) => request.post(`/api/game/sessions/${id}/turns`, { playerInput })
+export const apiSessionDetail = (id) => request.get(`/api/game/sessions/${id}`)
+export const apiSessions = (params) => request.get('/api/game/sessions', { params })
+export const apiAbandon = (id) => request.put(`/api/game/sessions/${id}/abandon`)
+export const apiState = (id) => request.get(`/api/game/sessions/${id}/state`)

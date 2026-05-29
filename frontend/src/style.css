@@ -1,0 +1,53 @@
+:root {
+  --bg: #f5f6fa;
+  --surface: #ffffff;
+  --surface-2: #f0f2f7;
+  --text: #2c2f3a;
+  --text-2: #5b6172;
+  --text-3: #9aa0b0;
+  --border: #e4e7ed;
+  --border-strong: #d4d8e2;
+  --primary: #5b6ee1;
+  --primary-hover: #4a5cd0;
+  --primary-soft: #eef0fc;
+  --accent: #f0b25c;
+  --accent-soft: #fdf3e3;
+  --accent-strong: #e09a3c;
+  --success: #3aa76d;
+  --danger: #d9534f;
+  --warning: #e6a23c;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  --font-ui: "Noto Sans SC", -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-serif: "Noto Serif SC", "Songti SC", serif;
+
+  /* 沉浸深色（GamePlay） */
+  --imm-bg: #14162a;
+  --imm-surface: #1e2138;
+  --imm-surface-2: #262a45;
+  --imm-text: #e8e6df;
+  --imm-text-2: #9aa6c8;
+  --imm-accent: #f0b25c;
+  --imm-border: #343a5e;
+  --imm-npc-bubble: #2a2f52;
+  --imm-player-bubble: #3b3324;
+  --imm-narrative: #d8d3c4;
+
+  --el-color-primary: #5b6ee1;
+}
+
+* { box-sizing: border-box; }
+html, body, #app { height: 100%; margin: 0; }
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+}
+a { color: var(--primary); text-decoration: none; }
+
+.page { min-height: 100vh; background: var(--bg); }
+.container { max-width: 1120px; margin: 0 auto; padding: 24px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.section-title { font-size: 18px; font-weight: 600; margin: 8px 0 16px; color: var(--text); }
+.muted { color: var(--text-3); }

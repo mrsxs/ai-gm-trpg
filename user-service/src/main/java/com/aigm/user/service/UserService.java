@@ -50,6 +50,9 @@ public class UserService {
         // 默认授予 PLAYER
         Role player = roleMapper.selectOne(
                 new LambdaQueryWrapper<Role>().eq(Role::getRoleCode, RoleConst.PLAYER));
+        if (player == null) {
+            throw new BizException(ResultCode.SYSTEM_ERROR, "角色配置缺失（PLAYER），请检查种子数据");
+        }
         UserRole ur = new UserRole();
         ur.setUserId(u.getId());
         ur.setRoleId(player.getId());

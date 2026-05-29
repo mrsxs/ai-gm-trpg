@@ -37,6 +37,8 @@ import java.util.List;
 public class AuthGlobalFilter implements GlobalFilter, Ordered {
 
     private static final AntPathMatcher MATCHER = new AntPathMatcher();
+    /** 内部接口：网关层硬封锁，绝不对外（防御纵深，不依赖 Nacos 路由是否误配，基线禁止事项 §7）。 */
+    private static final List<String> INTERNAL_PATHS = List.of("/api/ai/**", "/api/memory/**");
     private static final List<String> WHITELIST = List.of(
             "/api/user/auth/login",
             "/api/user/auth/register",
@@ -57,6 +59,11 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
+
+        // 内部接口硬封锁：任何方法、任何来源一律 403（含 OPTIONS），不对外暴露
+        if (INTERNAL_PATHS.stream().anyMatch(p -> MATCHER.match(p, path))) {
+            return forbidden(exchange);
+        }
 
         // CORS 预检放行
         if (request.getMethod() == HttpMethod.OPTIONS) {
@@ -108,6 +115,15 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
 
     private boolean isWhitelisted(String path) {
         return WHITELIST.stream().anyMatch(p -> MATCHER.match(p, path));
+    }
+
+    private Mono<Void> forbidden(ServerWebExchange exchange) {
+        ServerHttpResponse response = exchange.getResponse();
+        response.setStatusCode(org.springframework.http.HttpStatus.NOT_FOUND);
+        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+        byte[] bytes = ("{\"code\":" + ResultCode.AUTH_NO_PERMISSION.getCode()
+                + ",\"message\":\"内部接口不对外开放\",\"data\":null}").getBytes(StandardCharsets.UTF_8);
+        return response.writeWith(Mono.just(response.bufferFactory().wrap(bytes)));
     }
 
     private Mono<Void> unauthorized(ServerWebExchange exchange, NotLoginException e) {

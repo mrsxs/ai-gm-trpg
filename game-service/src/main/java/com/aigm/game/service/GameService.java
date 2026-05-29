@@ -39,6 +39,8 @@ public class GameService {
     private static final int STATUS_ABANDONED = 4;
     private static final int SECRET_UNLOCK_EVIDENCE = 1; // ADR-0004：evidence>=1 解锁 NPC secret
     private static final int SUMMARY_MAX = 1000;
+    private static final com.fasterxml.jackson.databind.ObjectMapper OM =
+            new com.fasterxml.jackson.databind.ObjectMapper();
 
     private final GameSessionMapper sessionMapper;
     private final GameStateMapper stateMapper;
@@ -125,12 +127,16 @@ public class GameService {
         Long newNodeId = state.getCurrentNodeId();
         if (acceptedTo != null) {
             newNodeId = acceptedTo;
-            // 取目标节点元信息判定结局（事务外 Feign，保持事务短）
-            SceneNodeRunVO target = unwrap(
-                    scenarioClient.getRunNode(session.getScenarioId(), acceptedTo), ResultCode.RESOURCE_NOT_FOUND);
-            if (Boolean.TRUE.equals(target.getIsEnding())) {
-                newStatus = "WIN".equalsIgnoreCase(target.getEndingType()) ? STATUS_WIN : STATUS_LOSE;
-                finished = true;
+            // 取目标节点元信息判定结局（事务外 Feign，保持事务短）；取不到则降级为非结局，不阻断落库
+            try {
+                SceneNodeRunVO target = unwrap(
+                        scenarioClient.getRunNode(session.getScenarioId(), acceptedTo), ResultCode.RESOURCE_NOT_FOUND);
+                if (Boolean.TRUE.equals(target.getIsEnding())) {
+                    newStatus = "WIN".equalsIgnoreCase(target.getEndingType()) ? STATUS_WIN : STATUS_LOSE;
+                    finished = true;
+                }
+            } catch (Exception e) {
+                log.warn("[degrade] 取目标节点 {} 结局信息失败，按非结局推进。session={}", acceptedTo, session.getId());
             }
         }
 
@@ -272,7 +278,8 @@ public class GameService {
         if (sc.getAttrDelta() != null) {
             sc.getAttrDelta().forEach((k, delta) -> {
                 int cur = attrs.getOrDefault(k, 0) + (delta == null ? 0 : delta);
-                if ("sanity".equals(k)) cur = Math.max(0, Math.min(100, cur)); // clamp
+                cur = Math.max(0, cur);                              // 通用下界，防 AI 写负
+                if ("sanity".equals(k)) cur = Math.min(100, cur);   // sanity 上界 100
                 attrs.put(k, cur);
             });
         }
@@ -366,7 +373,7 @@ public class GameService {
 
     private GenerateResponse parseAi(String json) {
         try {
-            return new com.fasterxml.jackson.databind.ObjectMapper().readValue(json, GenerateResponse.class);
+            return OM.readValue(json, GenerateResponse.class);
         } catch (Exception e) {
             return null;
         }

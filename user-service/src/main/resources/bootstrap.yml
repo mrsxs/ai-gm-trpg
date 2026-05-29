@@ -7,7 +7,7 @@ spring:
     nacos:
       server-addr: 123.57.166.60:8848
       username: nacos
-      password: "3100880856"
+      password: "${NACOS_PASSWORD:3100880856}"
       discovery:
         namespace: public
         group: DEFAULT_GROUP

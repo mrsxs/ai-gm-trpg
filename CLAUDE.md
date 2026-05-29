@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 这个仓库现在是什么
 
-**纯设计文档、零代码的绿地项目**。仓库目前只有两份 Markdown 设计文档，尚无 `pom.xml`、源码、`docker-compose.yml`、前端工程——一切都还要**照文档从头实现**。两份文档是唯一事实源：
+> **实现状态（2026-05-30 更新）**：项目已按文档完整实现并端到端跑通——8 个 Maven 模块 + Vue3 前端均已落地，连远端中间件（Nacos/MySQL/Redis/PG @123.57.166.60）可一键启动，登录 `player/123456` 开局「迷雾古宅」可连续回合通关。**鉴权改用 sa-token**（覆盖文档 JWT，见 README §差异），memory 因远端无 pgvector 降级为 `REAL[]`+应用层余弦，无 LLM key 时 ai-engine/embedding 走确定性兜底。运行/架构/差异见 **`README.md`**。下文的「从头实现」描述为历史规划基线，施工细节仍以两份设计文档为 SSOT。
+
+原始状态为**纯设计文档、零代码的绿地项目**。两份文档是唯一事实源：
 
 | 简称 | 文件 | 回答 | 角色 |
 |---|---|---|---|

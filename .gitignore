@@ -1,0 +1,30 @@
+# Maven
+target/
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.project
+.classpath
+
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# 日志与本地环境
+*.log
+logs/
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db

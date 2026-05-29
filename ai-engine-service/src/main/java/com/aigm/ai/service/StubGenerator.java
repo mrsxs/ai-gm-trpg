@@ -45,8 +45,9 @@ public class StubGenerator {
         StateChanges sc = buildStateChanges(req.getPlayerInput());
         out.setStateChanges(sc);
 
-        // 4) proposedTransition：选优先级最高且 condition 在应用 stateChanges 后为真的一条
-        out.setProposedTransition(pickTransition(req.getGameState(), node, sc));
+        // 4) proposedTransition：默认停留，仅当输入含移动意图才推进（符合「多数回合停留」领域模型）
+        out.setProposedTransition(pickTransition(req.getGameState(), node, sc,
+                req.getPlayerInput(), Boolean.TRUE.equals(req.getIsFirstTurn())));
 
         // 5) memoryToStore：一条 EVENT，importance 3
         out.setMemoryToStore(buildMemory(req));
@@ -105,8 +106,18 @@ public class StubGenerator {
         return sc;
     }
 
-    /** 选优先级最高且 condition 在应用 stateChanges 后为真的转移；无则停留(null)。 */
-    private ProposedTransition pickTransition(GameStateDTO gs, NodeDTO node, StateChanges sc) {
+    /** 移动意图关键词：仅当玩家输入显式表达推进时才提议跳转，否则停留（领域模型：多数回合是停留）。 */
+    private static final String[] MOVE_VERBS = {
+            "去", "前往", "进入", "上楼", "下楼", "对峙", "指认", "揭露", "离开", "返回",
+            "回到", "走向", "走进", "推门", "继续", "前进", "来到", "上去", "下去", "出发"
+    };
+
+    /**
+     * 选择跳转：默认停留(null)。仅当首回合(开局入场)或输入含移动意图时，在「应用变更后 condition 为真」的
+     * 转移中，优先选描述与输入字符二元组重合最多者，其次取优先级最高者。
+     */
+    private ProposedTransition pickTransition(GameStateDTO gs, NodeDTO node, StateChanges sc,
+                                              String playerInput, boolean firstTurn) {
         ProposedTransition pt = new ProposedTransition();
         if (node == null || CollectionUtils.isEmpty(node.getTransitions())) {
             pt.setToNodeId(null);
@@ -117,21 +128,51 @@ public class StubGenerator {
         Map<String, Integer> attrs = simulateAttrs(gs, sc);
         List<String> inventory = simulateInventory(gs, sc);
 
-        TransitionDTO best = node.getTransitions().stream()
+        List<TransitionDTO> satisfiable = node.getTransitions().stream()
                 .filter(t -> t.getToNodeId() != null)
                 .filter(t -> ConditionEvaluator.evaluate(t.getCondition(), flags, attrs, inventory))
-                .max(Comparator.comparingInt(t -> t.getPriority() == null ? 0 : t.getPriority()))
-                .orElse(null);
-
-        if (best == null) {
+                .toList();
+        if (satisfiable.isEmpty()) {
             pt.setToNodeId(null);
             pt.setReason("当前条件尚不足以触发任何合法转移，停留当前节点。");
-        } else {
-            pt.setToNodeId(best.getToNodeId());
-            pt.setReason("满足条件[" + (best.getCondition() == null ? "always" : best.getCondition())
-                    + "]，推进到节点 " + best.getToNodeId() + "。");
+            return pt;
         }
+
+        String input = playerInput == null ? "" : playerInput;
+        boolean wantMove = firstTurn || containsMoveVerb(input);
+        if (!wantMove) {
+            pt.setToNodeId(null);
+            pt.setReason("玩家未表达推进意图，停留当前节点继续即兴。");
+            return pt;
+        }
+
+        TransitionDTO best = satisfiable.stream()
+                .max(Comparator
+                        .comparingInt((TransitionDTO t) -> descMatchScore(t.getDescription(), input))
+                        .thenComparingInt(t -> t.getPriority() == null ? 0 : t.getPriority()))
+                .orElse(satisfiable.get(0));
+
+        pt.setToNodeId(best.getToNodeId());
+        pt.setReason("玩家表达推进意图，满足条件[" + (best.getCondition() == null ? "always" : best.getCondition())
+                + "]，推进到节点 " + best.getToNodeId() + "。");
         return pt;
+    }
+
+    private boolean containsMoveVerb(String input) {
+        for (String v : MOVE_VERBS) {
+            if (input.contains(v)) return true;
+        }
+        return false;
+    }
+
+    /** 描述与输入的字符二元组重合数，用于把玩家意图匹配到最贴切的出边。 */
+    private int descMatchScore(String description, String input) {
+        if (description == null || description.isBlank() || input.isBlank()) return 0;
+        int score = 0;
+        for (int i = 0; i + 1 < description.length(); i++) {
+            if (input.contains(description.substring(i, i + 2))) score++;
+        }
+        return score;
     }
 
     private List<MemoryItem> buildMemory(GenerateRequest req) {

@@ -31,6 +31,12 @@
             <div class="text">{{ pendingInput }}</div>
           </div>
         </div>
+        <div v-for="(q, i) in queue" :key="'q' + i" class="turn">
+          <div class="bubble player queued">
+            <span class="who">你 · 待发送</span>
+            <div class="text">{{ q }}</div>
+          </div>
+        </div>
         <div v-if="thinking" class="thinking">GM 正在叙事…</div>
       </div>
 
@@ -60,11 +66,11 @@
           ref="inputEl"
           :disabled="finished"
           size="large"
-          :placeholder="thinking ? '再次回车可打断并追加…' : '输入你的行动…（回车提交）'"
+          :placeholder="thinking ? 'GM 叙事中，回车可排队下一步…' : '输入你的行动…（回车提交）'"
           @keyup.enter="submit"
         />
-        <el-button type="primary" size="large" :loading="thinking && !input.trim()" :disabled="finished || (!input.trim() && !thinking)" @click="submit">
-          {{ finished ? '已结束' : thinking ? '打断' : '行动' }}
+        <el-button type="primary" size="large" :loading="thinking && !input.trim()" :disabled="finished || !input.trim()" @click="submit">
+          {{ finished ? '已结束' : thinking ? '排队' : '行动' }}
         </el-button>
       </div>
     </div>
@@ -136,9 +142,8 @@ const transitions = ref([])
 const flagDefs = ref([])
 const input = ref('')
 const thinking = ref(false)
-const pendingInput = ref('')   // 玩家消息立即展示，AI 回复到达前占位
-const abortCtrl = ref(null)    // 当前请求的 AbortController，供打断用
-let submitGen = 0              // 单调递增，用于识别过期回调
+const pendingInput = ref('')   // 当前在途回合的玩家消息，AI 回复到达前占位展示
+const queue = ref([])          // 思考时排队的后续行动，按序串行发送（不并发）
 const flowEl = ref(null)
 const inputEl = ref(null)
 const showIntro = ref(false)
@@ -243,36 +248,41 @@ const load = async () => {
 }
 onMounted(load)
 
+// 后端回合不可取消：HTTP abort 拦不住已落库的事务，且并发会撞唯一键产生竞态。
+// 故采用串行排队——思考时回车把行动排进 queue，当前回合返回后按序自动发送。
 const submit = async () => {
   if (finished.value) return
   const text = input.value.trim()
-  // 思考中但没有新输入时，点"打断"按钮取消当前请求
-  if (thinking.value && !text) {
-    abortCtrl.value?.abort()
-    return
-  }
   if (!text) return
   input.value = ''
-
-  if (thinking.value && abortCtrl.value) {
-    // 打断：取消上一个请求，将两段输入合并
-    abortCtrl.value.abort()
-    pendingInput.value = `${pendingInput.value}；（追加：${text}）`
-  } else {
-    pendingInput.value = text
+  if (thinking.value) {
+    queue.value.push(text) // 在途回合未结束，排队待发，不并发
+    scrollBottom()
+    return
   }
+  await drain(text)
+}
 
+// 串行执行：先跑首条，再按序消费队列；任一回合失败或对局结束则停止并清队。
+const drain = async (first) => {
+  let text = first
+  while (text != null) {
+    const ok = await runOne(text)
+    if (!ok || finished.value) break
+    text = queue.value.length ? queue.value.shift() : null
+  }
+  if (queue.value.length && finished.value) {
+    queue.value = []
+    ElMessage.info('对局已结束，排队中的行动已取消')
+  }
+}
+
+const runOne = async (text) => {
+  pendingInput.value = text
   thinking.value = true
   scrollBottom()
-
-  const ctrl = new AbortController()
-  abortCtrl.value = ctrl
-  const myGen = ++submitGen
-  const sendText = pendingInput.value
-
   try {
-    const r = await apiSubmitTurn(sessionId, sendText, { signal: ctrl.signal })
-    if (myGen !== submitGen) return  // 已被更新的请求取代
+    const r = await apiSubmitTurn(sessionId, text)
     pendingInput.value = ''
     turns.value.push(r.turn)
     state.value = r.state
@@ -280,21 +290,17 @@ const submit = async () => {
       const d = await apiSessionDetail(sessionId)
       session.value = d.session
       scrollBottom()
-      setTimeout(() => { showEnding.value = true }, 600)
+      setTimeout(() => { showEnding.value = true }, 600) // 让结局叙事先渲染再弹收尾
     }
     scrollBottom()
+    return true
   } catch (e) {
-    if (myGen !== submitGen) return  // 被打断，静默忽略
-    if (e.code !== 'ERR_CANCELED') {
-      input.value = sendText  // 真实网络错误，恢复输入框
-      pendingInput.value = ''
-    }
-    // 取消错误：pendingInput 保留，等下一次提交
+    input.value = text     // 恢复失败的输入，便于重试
+    pendingInput.value = ''
+    queue.value = []       // 剧情依赖上一回合，失败后不盲目续发排队
+    return false
   } finally {
-    if (myGen === submitGen) {
-      thinking.value = false
-      abortCtrl.value = null
-    }
+    thinking.value = false
   }
 }
 </script>
@@ -317,6 +323,7 @@ const submit = async () => {
 .bubble .who { font-size: 12px; color: var(--imm-text-2); display: block; margin-bottom: 4px; }
 .bubble .text { line-height: 1.7; }
 .bubble.player { background: var(--imm-player-bubble); margin-left: auto; border-bottom-right-radius: 4px; }
+.bubble.player.queued { opacity: .55; border: 1px dashed var(--imm-border); }
 .bubble.npc { background: var(--imm-npc-bubble); border-bottom-left-radius: 4px; }
 .thinking { color: var(--imm-text-2); font-style: italic; padding: 8px 0; }
 .side { width: 300px; flex-shrink: 0; align-self: flex-start; max-height: 100%; overflow-y: auto; position: sticky; top: 0; display: flex; flex-direction: column; gap: 16px; }

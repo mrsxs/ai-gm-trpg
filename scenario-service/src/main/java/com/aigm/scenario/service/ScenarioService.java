@@ -35,6 +35,7 @@ public class ScenarioService {
     private final NpcMapper npcMapper;
     private final NodeNpcMapper nodeNpcMapper;
     private final TransitionMapper transitionMapper;
+    private final FlagDefMapper flagDefMapper;
 
     // ============================ 剧本 ============================
 
@@ -78,6 +79,16 @@ public class ScenarioService {
         vo.setNodes(nodes.stream().map(n -> toNodeVO(n, nodeNpcMap.getOrDefault(n.getId(), List.of()))).collect(Collectors.toList()));
         vo.setNpcs(npcs.stream().map(this::toNpcVO).collect(Collectors.toList()));
         vo.setTransitions(trans.stream().map(this::toTransitionVO).collect(Collectors.toList()));
+
+        List<FlagDef> flags = flagDefMapper.selectList(new LambdaQueryWrapper<FlagDef>()
+                .eq(FlagDef::getScenarioId, id).orderByAsc(FlagDef::getId));
+        vo.setFlags(flags.stream().map(f -> {
+            FlagDefVO fv = new FlagDefVO();
+            fv.setFlagKey(f.getFlagKey());
+            fv.setFlagName(f.getFlagName());
+            fv.setDefaultValue(f.getDefaultValue());
+            return fv;
+        }).collect(Collectors.toList()));
         return vo;
     }
 

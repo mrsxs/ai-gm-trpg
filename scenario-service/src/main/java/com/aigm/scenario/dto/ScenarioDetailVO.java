@@ -10,4 +10,5 @@ public class ScenarioDetailVO {
     private List<SceneNodeVO> nodes;
     private List<NpcVO> npcs;
     private List<TransitionVO> transitions;
+    private List<FlagDefVO> flags;
 }

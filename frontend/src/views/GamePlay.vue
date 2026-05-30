@@ -29,6 +29,7 @@
       </div>
 
       <aside class="side">
+        <InvestigationLog :flag-defs="flagDefs" :flags="state.flags || {}" :hint="objective" />
         <StateBar :state="state" />
       </aside>
     </div>
@@ -113,6 +114,7 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import StateBar from '../components/StateBar.vue'
+import InvestigationLog from '../components/InvestigationLog.vue'
 import { apiSessionDetail, apiSubmitTurn, apiScenarioDetail } from '../api'
 
 const route = useRoute()
@@ -125,6 +127,7 @@ const scenario = ref({})
 const npcMap = ref({})
 const nodeMap = ref({})
 const transitions = ref([])
+const flagDefs = ref([])
 const input = ref('')
 const thinking = ref(false)
 const flowEl = ref(null)
@@ -156,15 +159,46 @@ const winTitles = computed(() =>
 const currentNode = computed(() => nodeMap.value[state.value?.currentNodeId] || null)
 const currentNodeTitle = computed(() => currentNode.value?.title || '')
 
-// 当前节点的出边描述 = 剧情动作提示；不足则补通用探索动作
+// 是否身处「对峙/抉择」节点：当前节点有通往结局节点的出边
+const atShowdown = computed(() => {
+  const cur = state.value?.currentNodeId
+  return transitions.value.some(
+    (t) => t.fromNodeId === cur && nodeMap.value[t.toNodeId]?.isEnding === 1,
+  )
+})
+
+// 对峙厅在场 NPC（用于"指认某人"动作）
+const presentNpcNames = computed(() =>
+  (currentNode.value?.npcIds || []).map((id) => npcMap.value[id]).filter(Boolean),
+)
+
+// 动作提示：对峙厅 → 指认在场每个人；普通节点 → 出边描述 + 通用探索
 const suggestions = computed(() => {
   const cur = state.value?.currentNodeId
+  if (atShowdown.value && presentNpcNames.value.length) {
+    return presentNpcNames.value.map((n) => `我指认「${n}」就是凶手`)
+  }
   const fromCur = transitions.value
-    .filter((t) => t.fromNodeId === cur && t.description)
+    .filter((t) => t.fromNodeId === cur && t.description && nodeMap.value[t.toNodeId]?.isEnding !== 1)
     .sort((a, b) => (b.priority || 0) - (a.priority || 0))
     .map((t) => t.description)
   const list = [...new Set([...fromCur, ...GENERIC])]
-  return list.slice(0, 5)
+  return list.slice(0, 6)
+})
+
+// 调查目标提示（防迷路）：按已得证据 flag 推断下一步
+const objective = computed(() => {
+  const f = state.value?.flags || {}
+  const has = (k) => f[k] === true
+  if (atShowdown.value) return '当面指认你认定的真凶——指错或证据不足，对方会狡辩脱身，不会结束。'
+  const ready = has('found_weapon') && (has('found_records') || has('found_will'))
+  if (ready) return '关键物证已齐！回大厅或二楼回廊召集众人，到对峙厅指认真凶。'
+  const todo = []
+  if (!has('has_key')) todo.push('结识女仆莉莉取得书房钥匙')
+  if (!has('found_weapon')) todo.push('找到凶器（留意通往地窖的暗道）')
+  if (!has('found_records') && !has('found_will')) todo.push('查医生客房的药箱或阁楼保险箱里的遗嘱')
+  if (!todo.length) return '再核实一两处线索，准备对峙真凶。'
+  return '继续搜证：' + todo.join('；') + '。'
 })
 
 const npcName = (id) => npcMap.value[id] || `NPC#${id}`
@@ -191,6 +225,7 @@ const load = async () => {
       npcMap.value = Object.fromEntries((sc?.npcs || []).map((n) => [n.id, n.name]))
       nodeMap.value = Object.fromEntries((sc?.nodes || []).map((n) => [n.id, n]))
       transitions.value = sc?.transitions || []
+      flagDefs.value = sc?.flags || []
     } catch (e) { /* 静态资料拉取失败不阻断对局 */ }
   }
 
@@ -242,7 +277,7 @@ const submit = async () => {
 .bubble.player { background: var(--imm-player-bubble); margin-left: auto; border-bottom-right-radius: 4px; }
 .bubble.npc { background: var(--imm-npc-bubble); border-bottom-left-radius: 4px; }
 .thinking { color: var(--imm-text-2); font-style: italic; padding: 8px 0; }
-.side { width: 300px; flex-shrink: 0; align-self: flex-start; max-height: 100%; overflow-y: auto; position: sticky; top: 0; }
+.side { width: 300px; flex-shrink: 0; align-self: flex-start; max-height: 100%; overflow-y: auto; position: sticky; top: 0; display: flex; flex-direction: column; gap: 16px; }
 .imm-foot { max-width: 1120px; width: 100%; margin: 0 auto; }
 .suggests { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 24px 0; }
 .loc { font-family: var(--font-serif); color: var(--imm-accent); font-size: 13px; margin-right: 6px; }

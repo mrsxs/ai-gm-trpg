@@ -7,9 +7,9 @@ spring:
     web-application-type: reactive
   cloud:
     nacos:
-      server-addr: 123.57.166.60:8848
+      server-addr: ${NACOS_ADDR:localhost:8848}
       username: nacos
-      password: "${NACOS_PASSWORD:3100880856}"
+      password: "${NACOS_PASSWORD:nacos}"
       discovery:
         namespace: public
         group: DEFAULT_GROUP

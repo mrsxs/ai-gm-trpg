@@ -186,19 +186,17 @@ const suggestions = computed(() => {
   return list.slice(0, 6)
 })
 
-// 调查目标提示（防迷路）：按已得证据 flag 推断下一步
+// 调查目标提示（防迷路）：从【当前剧本的旗标定义】推断下一步，剧本无关
 const objective = computed(() => {
-  const f = state.value?.flags || {}
-  const has = (k) => f[k] === true
   if (atShowdown.value) return '当面指认你认定的真凶——指错或证据不足，对方会狡辩脱身，不会结束。'
-  const ready = has('found_weapon') && (has('found_records') || has('found_will'))
-  if (ready) return '关键物证已齐！回大厅或二楼回廊召集众人，到对峙厅指认真凶。'
-  const todo = []
-  if (!has('has_key')) todo.push('结识女仆莉莉取得书房钥匙')
-  if (!has('found_weapon')) todo.push('找到凶器（留意通往地窖的暗道）')
-  if (!has('found_records') && !has('found_will')) todo.push('查医生客房的药箱或阁楼保险箱里的遗嘱')
-  if (!todo.length) return '再核实一两处线索，准备对峙真凶。'
-  return '继续搜证：' + todo.join('；') + '。'
+  const f = state.value?.flags || {}
+  const clean = (s) => (s || '').replace(/^【[^】]+】/, '')
+  // 证据/证词类旗标：flag_name 以【证据】或【证词】开头（与调查手记同约定）
+  const evidence = (flagDefs.value || []).filter((d) => /^【证据】|^【证词】/.test(d.flagName || ''))
+  if (!evidence.length) return '四处走走，留意可疑的人和物，盘问在场的每一个人。'
+  const missing = evidence.filter((d) => f[d.flagKey] !== true).map((d) => clean(d.flagName))
+  if (!missing.length) return '关键线索已齐！找当事人当面对质，正式指认你认定的真凶。'
+  return '继续搜证，还需找到：' + missing.join('、') + '。'
 })
 
 const npcName = (id) => npcMap.value[id] || `NPC#${id}`

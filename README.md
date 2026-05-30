@@ -29,20 +29,20 @@
 
 | 组件 | 地址 | 账号/密码 |
 |---|---|---|
-| Nacos | http://123.57.166.60:8848/nacos | nacos / 3100880856 |
-| MySQL | 123.57.166.60:3306 | root / 3100880856 |
-| Redis | 123.57.166.60:6379 | — / 123456 |
-| PostgreSQL | 123.57.166.60:5432 | postgres / 3100880856 |
+| Nacos | http://<MIDDLEWARE_HOST>:8848/nacos | nacos / <PASSWORD> |
+| MySQL | <MIDDLEWARE_HOST>:3306 | root / <PASSWORD> |
+| Redis | <MIDDLEWARE_HOST>:6379 | — / <REDIS_PASSWORD> |
+| PostgreSQL | <MIDDLEWARE_HOST>:5432 | postgres / <PASSWORD> |
 
 ## 运行
 
 ```bash
 # 1) 建库 + 种子（首次，需本地 mysql/psql 客户端）
-mysql  -h123.57.166.60 -uroot -p3100880856 < deploy/mysql-init/01-schema-user.sql
-mysql  -h123.57.166.60 -uroot -p3100880856 < deploy/mysql-init/02-schema-scenario.sql
-mysql  -h123.57.166.60 -uroot -p3100880856 < deploy/mysql-init/03-schema-game.sql
-mysql  -h123.57.166.60 -uroot -p3100880856 < deploy/mysql-init/04-seed.sql
-psql "host=123.57.166.60 port=5432 user=postgres dbname=aigm_memory" -f deploy/pg-init/01b-schema-memory-fallback.sql
+mysql  -h<MIDDLEWARE_HOST> -uroot -p<PASSWORD> < deploy/mysql-init/01-schema-user.sql
+mysql  -h<MIDDLEWARE_HOST> -uroot -p<PASSWORD> < deploy/mysql-init/02-schema-scenario.sql
+mysql  -h<MIDDLEWARE_HOST> -uroot -p<PASSWORD> < deploy/mysql-init/03-schema-game.sql
+mysql  -h<MIDDLEWARE_HOST> -uroot -p<PASSWORD> < deploy/mysql-init/04-seed.sql
+psql "host=<MIDDLEWARE_HOST> port=5432 user=postgres dbname=aigm_memory" -f deploy/pg-init/01b-schema-memory-fallback.sql
 
 # 2) 发布 Nacos 配置（7 个 dataId）
 bash deploy/nacos/publish.sh

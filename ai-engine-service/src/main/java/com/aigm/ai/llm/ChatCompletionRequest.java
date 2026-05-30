@@ -16,4 +16,6 @@ public class ChatCompletionRequest {
     private Integer max_tokens;
     /** OpenAI 兼容 JSON 模式：{"type":"json_object"}；不需要时置 null。 */
     private Map<String, String> response_format;
+    /** 显式关闭流式（部分中转对推理模型默认走 SSE，长输出尤甚）。 */
+    private Boolean stream;
 }

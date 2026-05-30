@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 本地启动全部后端服务（连远端中间件 123.57.166.60）。先 mvn package 出 jar。
+# 本地启动全部后端服务（连中间件(默认本地 localhost，可用 .env 环境变量覆盖)）。先 mvn package 出 jar。
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LOGDIR="${LOGDIR:-/tmp}"

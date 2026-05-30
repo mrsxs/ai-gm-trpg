@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # 发布 7 个 dataId 到远端 Nacos（鉴权开启）。重复执行幂等覆盖。
 set -euo pipefail
-NACOS="${NACOS_ADDR:-http://123.57.166.60:8848}"
+NACOS="${NACOS_ADDR:-http://localhost:8848}"
 NACOS_USER="${NACOS_USER:-nacos}"
-NACOS_PASS="${NACOS_PASS:-3100880856}"
+NACOS_PASS="${NACOS_PASS:-nacos}"
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
 TOKEN=$(curl -s -m 8 -X POST "$NACOS/nacos/v1/auth/login" \

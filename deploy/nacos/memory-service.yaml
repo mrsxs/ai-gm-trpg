@@ -13,7 +13,7 @@ aigm:
     recall-default-top-k: 5
 spring:
   datasource:
-    url: jdbc:postgresql://123.57.166.60:5432/aigm_memory
+    url: jdbc:postgresql://${PG_HOST:localhost}:5432/aigm_memory
     username: postgres
-    password: "3100880856"
+    password: "${PG_PASSWORD:postgres}"
     driver-class-name: org.postgresql.Driver

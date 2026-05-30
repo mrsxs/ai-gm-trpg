@@ -11,7 +11,8 @@ public class SeedRunner {
       clean.append(line).append("\n");
     }
     Class.forName("com.mysql.cj.jdbc.Driver");
-    String url = "jdbc:mysql://123.57.166.60:3306/?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8&allowMultiQueries=true";
+    String host = System.getenv().getOrDefault("MYSQL_HOST", "localhost");
+    String url = "jdbc:mysql://" + host + ":3306/?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8&allowMultiQueries=true";
     try (Connection c = DriverManager.getConnection(url, "root", a[1]);
          Statement st = c.createStatement()) {
       boolean hasRs = st.execute(clean.toString());   // 服务器端按引号正确分句

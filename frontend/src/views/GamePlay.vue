@@ -86,6 +86,25 @@
         <el-button type="primary" @click="showIntro = false">开始游戏</el-button>
       </template>
     </el-dialog>
+
+    <!-- 结局大图 -->
+    <el-dialog v-model="showEnding" :show-close="false" width="460px" class="ending-dialog" align-center>
+      <div class="ending" :class="endingClass">
+        <div class="ending-emoji">{{ session.status === 2 ? '🏆' : '🥀' }}</div>
+        <div class="ending-title">{{ session.status === 2 ? '真相大白 · 通关' : '真相蒙尘 · 失败' }}</div>
+        <div class="ending-sub">{{ endingSub }}</div>
+        <div class="ending-stats">
+          <span>共 {{ session.turnCount }} 回合</span>
+          <span>证据 {{ state.attributes?.evidence ?? 0 }}</span>
+          <span>理智 {{ state.attributes?.sanity ?? 0 }}</span>
+        </div>
+        <div v-if="state.inventory?.length" class="ending-items">收集物证：{{ state.inventory.join('、') }}</div>
+      </div>
+      <template #footer>
+        <el-button @click="showEnding = false">留在此页回顾</el-button>
+        <el-button type="primary" @click="$router.push('/hall')">返回大厅</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -111,6 +130,7 @@ const thinking = ref(false)
 const flowEl = ref(null)
 const inputEl = ref(null)
 const showIntro = ref(false)
+const showEnding = ref(false)
 
 // 通用探索动作（任何节点都给一两个兜底提示）
 const GENERIC = ['仔细环顾四周', '与在场的人交谈']
@@ -119,6 +139,11 @@ const sessionTitle = computed(() => session.value?.title || '对局')
 const finished = computed(() => session.value?.status && session.value.status !== 1)
 const endingClass = computed(() => (session.value?.status === 2 ? 'win' : 'lose'))
 const endingText = computed(() => (session.value?.status === 2 ? '🏆 真相大白 · 通关' : '🥀 真相蒙尘 · 失败'))
+const endingSub = computed(() =>
+  session.value?.status === 2
+    ? '你拼齐了散落的线索，当众揭穿真凶，沉冤得雪。'
+    : '真相从指缝溜走，凶手隐入夜色——再来一局或许会不同。',
+)
 
 const introTitle = computed(() => scenario.value?.title ? `${scenario.value.title}` : '玩法说明')
 const winTitles = computed(() =>
@@ -169,8 +194,9 @@ const load = async () => {
     } catch (e) { /* 静态资料拉取失败不阻断对局 */ }
   }
 
-  // 新开局（仅一个回合且未结束）自动弹出背景说明
-  if (!finished.value && turns.value.length <= 1) showIntro.value = true
+  // 新开局（仅一个回合且未结束）自动弹出背景说明；已结束则弹结局
+  if (finished.value) showEnding.value = true
+  else if (turns.value.length <= 1) showIntro.value = true
   scrollBottom()
 }
 onMounted(load)
@@ -187,7 +213,8 @@ const submit = async () => {
     if (r.finished) {
       const d = await apiSessionDetail(sessionId)
       session.value = d.session
-      ElMessage.success('故事抵达结局')
+      scrollBottom()
+      setTimeout(() => { showEnding.value = true }, 600) // 让结局叙事先渲染再弹收尾
     }
     scrollBottom()
   } catch (e) { input.value = text }
@@ -196,7 +223,7 @@ const submit = async () => {
 </script>
 
 <style scoped>
-.imm { min-height: 100vh; background: var(--imm-bg); color: var(--imm-text); display: flex; flex-direction: column; }
+.imm { height: 100vh; overflow: hidden; background: var(--imm-bg); color: var(--imm-text); display: flex; flex-direction: column; }
 .imm-top { display: flex; align-items: center; height: 56px; padding: 0 24px; border-bottom: 1px solid var(--imm-border); }
 .back { color: var(--imm-text-2); cursor: pointer; width: 120px; }
 .imm-title { flex: 1; text-align: center; font-family: var(--font-serif); font-size: 18px; color: var(--imm-accent); }
@@ -205,8 +232,8 @@ const submit = async () => {
 .banner { text-align: center; padding: 14px; font-size: 18px; font-weight: 700; font-family: var(--font-serif); }
 .banner.win { background: rgba(240,178,92,.15); color: var(--imm-accent); }
 .banner.lose { background: rgba(217,83,79,.15); color: #ff8a85; }
-.imm-body { flex: 1; display: flex; gap: 20px; max-width: 1120px; width: 100%; margin: 0 auto; padding: 20px 24px; overflow: hidden; }
-.flow { flex: 1; overflow-y: auto; padding-right: 8px; }
+.imm-body { flex: 1; min-height: 0; display: flex; gap: 20px; max-width: 1120px; width: 100%; margin: 0 auto; padding: 20px 24px; overflow: hidden; }
+.flow { flex: 1; min-width: 0; overflow-y: auto; padding-right: 8px; }
 .turn { margin-bottom: 26px; }
 .narrative { font-family: var(--font-serif); font-size: 17px; line-height: 1.9; color: var(--imm-narrative); margin: 12px 0; white-space: pre-wrap; }
 .bubble { margin: 10px 0; padding: 12px 16px; border-radius: 14px; max-width: 80%; }
@@ -215,7 +242,7 @@ const submit = async () => {
 .bubble.player { background: var(--imm-player-bubble); margin-left: auto; border-bottom-right-radius: 4px; }
 .bubble.npc { background: var(--imm-npc-bubble); border-bottom-left-radius: 4px; }
 .thinking { color: var(--imm-text-2); font-style: italic; padding: 8px 0; }
-.side { width: 300px; overflow-y: auto; }
+.side { width: 300px; flex-shrink: 0; align-self: flex-start; max-height: 100%; overflow-y: auto; position: sticky; top: 0; }
 .imm-foot { max-width: 1120px; width: 100%; margin: 0 auto; }
 .suggests { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 24px 0; }
 .loc { font-family: var(--font-serif); color: var(--imm-accent); font-size: 13px; margin-right: 6px; }
@@ -231,4 +258,13 @@ const submit = async () => {
 .intro h4 { margin: 0 0 6px; font-size: 15px; }
 .intro p { margin: 0; line-height: 1.8; color: #444; }
 .intro ul { margin: 0; padding-left: 20px; line-height: 1.9; color: #444; }
+.ending { text-align: center; padding: 8px 4px; }
+.ending-emoji { font-size: 56px; line-height: 1; }
+.ending-title { font-family: var(--font-serif); font-size: 24px; font-weight: 700; margin: 12px 0 6px; }
+.ending.win .ending-title { color: #c8881f; }
+.ending.lose .ending-title { color: #c0392b; }
+.ending-sub { color: #666; line-height: 1.7; margin-bottom: 16px; }
+.ending-stats { display: flex; justify-content: center; gap: 18px; font-size: 14px; color: #333; }
+.ending-stats span { background: #f3f4f8; border-radius: 10px; padding: 5px 14px; }
+.ending-items { margin-top: 12px; font-size: 13px; color: #888; }
 </style>

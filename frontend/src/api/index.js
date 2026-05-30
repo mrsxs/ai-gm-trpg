@@ -33,7 +33,7 @@ export const apiDeleteTransition = (id) => request.delete(`/api/scenario/transit
 
 // ===== game =====
 export const apiStartSession = (scenarioId) => request.post('/api/game/sessions', { scenarioId })
-export const apiSubmitTurn = (id, playerInput) => request.post(`/api/game/sessions/${id}/turns`, { playerInput })
+export const apiSubmitTurn = (id, playerInput, options = {}) => request.post(`/api/game/sessions/${id}/turns`, { playerInput }, options)
 export const apiSessionDetail = (id) => request.get(`/api/game/sessions/${id}`)
 export const apiSessions = (params) => request.get('/api/game/sessions', { params })
 export const apiAbandon = (id) => request.put(`/api/game/sessions/${id}/abandon`)

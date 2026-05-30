@@ -28,6 +28,7 @@ request.interceptors.response.use(
     return body
   },
   (error) => {
+    if (error.code === 'ERR_CANCELED') return Promise.reject(error)
     const status = error.response?.status
     const body = error.response?.data
     if (status === 401) {

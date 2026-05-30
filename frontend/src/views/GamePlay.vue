@@ -25,6 +25,12 @@
             <div class="text">{{ d.line }}</div>
           </div>
         </div>
+        <div v-if="pendingInput" class="turn">
+          <div class="bubble player">
+            <span class="who">你</span>
+            <div class="text">{{ pendingInput }}</div>
+          </div>
+        </div>
         <div v-if="thinking" class="thinking">GM 正在叙事…</div>
       </div>
 
@@ -52,13 +58,13 @@
         <el-input
           v-model="input"
           ref="inputEl"
-          :disabled="finished || thinking"
+          :disabled="finished"
           size="large"
-          placeholder="输入你的行动…（回车提交）"
+          :placeholder="thinking ? '再次回车可打断并追加…' : '输入你的行动…（回车提交）'"
           @keyup.enter="submit"
         />
-        <el-button type="primary" size="large" :loading="thinking" :disabled="finished || !input.trim()" @click="submit">
-          {{ finished ? '已结束' : '行动' }}
+        <el-button type="primary" size="large" :loading="thinking && !input.trim()" :disabled="finished || (!input.trim() && !thinking)" @click="submit">
+          {{ finished ? '已结束' : thinking ? '打断' : '行动' }}
         </el-button>
       </div>
     </div>
@@ -130,6 +136,9 @@ const transitions = ref([])
 const flagDefs = ref([])
 const input = ref('')
 const thinking = ref(false)
+const pendingInput = ref('')   // 玩家消息立即展示，AI 回复到达前占位
+const abortCtrl = ref(null)    // 当前请求的 AbortController，供打断用
+let submitGen = 0              // 单调递增，用于识别过期回调
 const flowEl = ref(null)
 const inputEl = ref(null)
 const showIntro = ref(false)
@@ -235,23 +244,58 @@ const load = async () => {
 onMounted(load)
 
 const submit = async () => {
-  if (!input.value.trim() || thinking.value || finished.value) return
-  const text = input.value
+  if (finished.value) return
+  const text = input.value.trim()
+  // 思考中但没有新输入时，点"打断"按钮取消当前请求
+  if (thinking.value && !text) {
+    abortCtrl.value?.abort()
+    return
+  }
+  if (!text) return
   input.value = ''
+
+  if (thinking.value && abortCtrl.value) {
+    // 打断：取消上一个请求，将两段输入合并
+    abortCtrl.value.abort()
+    pendingInput.value = `${pendingInput.value}；（追加：${text}）`
+  } else {
+    pendingInput.value = text
+  }
+
   thinking.value = true
+  scrollBottom()
+
+  const ctrl = new AbortController()
+  abortCtrl.value = ctrl
+  const myGen = ++submitGen
+  const sendText = pendingInput.value
+
   try {
-    const r = await apiSubmitTurn(sessionId, text)
+    const r = await apiSubmitTurn(sessionId, sendText, { signal: ctrl.signal })
+    if (myGen !== submitGen) return  // 已被更新的请求取代
+    pendingInput.value = ''
     turns.value.push(r.turn)
     state.value = r.state
     if (r.finished) {
       const d = await apiSessionDetail(sessionId)
       session.value = d.session
       scrollBottom()
-      setTimeout(() => { showEnding.value = true }, 600) // 让结局叙事先渲染再弹收尾
+      setTimeout(() => { showEnding.value = true }, 600)
     }
     scrollBottom()
-  } catch (e) { input.value = text }
-  finally { thinking.value = false }
+  } catch (e) {
+    if (myGen !== submitGen) return  // 被打断，静默忽略
+    if (e.code !== 'ERR_CANCELED') {
+      input.value = sendText  // 真实网络错误，恢复输入框
+      pendingInput.value = ''
+    }
+    // 取消错误：pendingInput 保留，等下一次提交
+  } finally {
+    if (myGen === submitGen) {
+      thinking.value = false
+      abortCtrl.value = null
+    }
+  }
 }
 </script>
 

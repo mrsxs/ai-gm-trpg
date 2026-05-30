@@ -23,7 +23,7 @@
 
 1. **鉴权用 sa-token 替代文档的 JWT**：默认模式（随机 token + Redis 共享会话），`token-name=Authorization`/`token-prefix=Bearer`，前端仍发 `Authorization: Bearer <token>`。网关用 sa-token 读 Redis 会话校验 + 下发 `X-User-*` 头，下游只信头做 RBAC（文档契约不变）。
 2. **远端 PostgreSQL 未装 pgvector**：memory-service 降级为 `REAL[]` 列 + 应用层余弦相似度（种子规模够用）；装上 pgvector 后切回 `deploy/pg-init/01-schema-memory.sql` 即可。
-3. **无 LLM/Embedding Key 时确定性兜底**：ai-engine 用 stub（按关键词推进状态机、符合「多数回合停留」语义）、memory 用哈希伪向量；配置注入真实 key 即走 OpenAI 兼容接口。
+3. **真实 LLM / Embedding 已接通，缺 key 时确定性兜底**：当前配置 ai-engine→`gpt-4o`（OpenAI 兼容中转），memory→通义 `text-embedding-v4`（DashScope 兼容，锁 1024 维），均已端到端验证（真实叙事通关 + 语义召回排序正确）。key 放根目录 `.env`（gitignore，`start-all.sh` 自动加载，模板见 `.env.example`）；删掉 key 则 ai-engine 回退关键词 stub、memory 回退哈希伪向量，仍可端到端跑通。
 
 ## 中间件（远端已就绪）
 
@@ -47,10 +47,11 @@ psql "host=123.57.166.60 port=5432 user=postgres dbname=aigm_memory" -f deploy/p
 # 2) 发布 Nacos 配置（7 个 dataId）
 bash deploy/nacos/publish.sh
 
-# 3) 构建 + 启动全部后端
+# 3) 真实 LLM/Embedding（可选）：cp .env.example .env 并填 key；start-all.sh 自动加载
+#    不配 .env 也能跑（走确定性 stub/伪向量兜底）
+# 4) 构建 + 启动全部后端
 mvn -DskipTests clean package
 bash deploy/start-all.sh          # 6 个服务，日志 /tmp/aigm-*.log
-# 可选真实 LLM：export LLM_API_KEY=... EMBEDDING_API_KEY=...
 
 # 4) 前端
 cd frontend && npm install && npm run dev   # http://localhost:5173

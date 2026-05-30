@@ -41,9 +41,13 @@ public class EmbeddingClient {
     private float[] embedViaApi(String text) {
         String url = trimTrailingSlash(props.getBaseUrl()) + "/embeddings";
         try {
+            // dimensions 锁死 1024：DashScope text-embedding-v3/v4 与 OpenAI v3 均支持，
+            // 保证返回维度与 pgvector 列定义严格一致（基线：向量维度严格 1024）。
             Map<String, Object> body = Map.of(
                     "model", props.getModel(),
-                    "input", text
+                    "input", text,
+                    "dimensions", props.getDimension(),
+                    "encoding_format", "float"
             );
             Map<String, Object> resp = embeddingRestClient.post()
                     .uri(url)

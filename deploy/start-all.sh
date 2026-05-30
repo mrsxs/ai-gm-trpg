@@ -3,9 +3,14 @@
 set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LOGDIR="${LOGDIR:-/tmp}"
-# LLM/Embedding key 可选：导出后真实调用，否则走确定性 stub/伪向量兜底
+# 若根目录有 .env（gitignore，存放密钥）则自动加载
+if [ -f "$ROOT/.env" ]; then set -a; . "$ROOT/.env"; set +a; fi
+# LLM/Embedding 配置可选：提供 LLM_API_KEY 即走真实 LLM，否则确定性 stub/伪向量兜底
 : "${LLM_API_KEY:=}"; export LLM_API_KEY
+: "${LLM_BASE_URL:=}"; export LLM_BASE_URL
+: "${LLM_MODEL:=}"; export LLM_MODEL
 : "${EMBEDDING_API_KEY:=}"; export EMBEDDING_API_KEY
+: "${NACOS_PASSWORD:=}"; export NACOS_PASSWORD
 
 start() {
   local name=$1
